@@ -1,117 +1,163 @@
-// Get DOM elements
-const todoInput = document.getElementById('todoInput');
-const addBtn = document.getElementById('addBtn');
-const todoList = document.getElementById('todoList');
-const totalCount = document.getElementById('totalCount');
-const completedCount = document.getElementById('completedCount');
-const clearBtn = document.getElementById('clearBtn');
+﻿const grid = document.getElementById('grid');
+const startBtn = document.getElementById('startBtn');
+const resetBtn = document.getElementById('resetBtn');
+const difficultySelect = document.getElementById('difficulty');
+const scoreEl = document.getElementById('score');
+const timeEl = document.getElementById('timeLeft');
+const bestEl = document.getElementById('bestScore');
 
-// Initialize app
-let todos = JSON.parse(localStorage.getItem('todos')) || [];
+const TOTAL_TILES = 9;
+const GAME_TIME = 30;
 
-// Render todos on page load
-document.addEventListener('DOMContentLoaded', () => {
-    renderTodos();
-});
+const difficultySettings = {
+    chill: { moveInterval: 900 },
+    steady: { moveInterval: 700 },
+    fast: { moveInterval: 500 }
+};
 
-// Add event listeners
-addBtn.addEventListener('click', addTodo);
-todoInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') addTodo();
-});
-clearBtn.addEventListener('click', clearCompleted);
+let activeIndex = -1;
+let score = 0;
+let timeLeft = GAME_TIME;
+let running = false;
+let moveTimer = null;
+let countdownTimer = null;
 
-// Add a new todo
-function addTodo() {
-    const text = todoInput.value.trim();
-    
-    if (text === '') {
-        alert('Please enter a task!');
-        return;
+const bestScoreKey = 'pulse-grid-best';
+
+function initGrid() {
+    grid.innerHTML = '';
+    for (let i = 0; i < TOTAL_TILES; i++) {
+        const tile = document.createElement('button');
+        tile.className = 'tile';
+        tile.type = 'button';
+        tile.dataset.index = String(i);
+        tile.setAttribute('aria-label', `Tile ${i + 1}`);
+        grid.appendChild(tile);
     }
-
-    const todo = {
-        id: Date.now(),
-        text: text,
-        completed: false
-    };
-
-    todos.push(todo);
-    saveTodos();
-    renderTodos();
-    todoInput.value = '';
-    todoInput.focus();
 }
 
-// Render all todos
-function renderTodos() {
-    todoList.innerHTML = '';
+function loadBestScore() {
+    const stored = Number(localStorage.getItem(bestScoreKey));
+    if (!Number.isNaN(stored)) {
+        bestEl.textContent = stored;
+    }
+}
 
-    if (todos.length === 0) {
-        todoList.innerHTML = '<div class="empty-state"><p>No tasks yet. Add one to get started!</p></div>';
-        updateStats();
-        return;
+function setActiveTile(index) {
+    const tiles = document.querySelectorAll('.tile');
+    tiles.forEach((tile) => tile.classList.remove('active'));
+    if (index >= 0) {
+        tiles[index].classList.add('active');
+    }
+    activeIndex = index;
+}
+
+function pickNextTile() {
+    let next = Math.floor(Math.random() * TOTAL_TILES);
+    if (TOTAL_TILES > 1) {
+        while (next === activeIndex) {
+            next = Math.floor(Math.random() * TOTAL_TILES);
+        }
+    }
+    setActiveTile(next);
+}
+
+function updateStats() {
+    scoreEl.textContent = score;
+    timeEl.textContent = timeLeft;
+}
+
+function startGame() {
+    if (running) return;
+    if (timeLeft <= 0) {
+        resetGame();
     }
 
-    todos.forEach(todo => {
-        const li = document.createElement('li');
-        li.className = `todo-item ${todo.completed ? 'completed' : ''}`;
-        li.innerHTML = `
-            <input 
-                type="checkbox" 
-                ${todo.completed ? 'checked' : ''}
-                onchange="toggleTodo(${todo.id})"
-            >
-            <span class="todo-text">${escapeHtml(todo.text)}</span>
-            <button class="delete-btn" onclick="deleteTodo(${todo.id})">Delete</button>
-        `;
-        todoList.appendChild(li);
-    });
+    running = true;
+    difficultySelect.disabled = true;
+    startBtn.textContent = 'Pause';
+
+    pickNextTile();
+    const { moveInterval } = difficultySettings[difficultySelect.value];
+
+    moveTimer = setInterval(pickNextTile, moveInterval);
+    countdownTimer = setInterval(() => {
+        timeLeft -= 1;
+        updateStats();
+        if (timeLeft <= 0) {
+            endGame();
+        }
+    }, 1000);
+}
+
+function pauseGame() {
+    running = false;
+    startBtn.textContent = 'Resume';
+    clearInterval(moveTimer);
+    clearInterval(countdownTimer);
+}
+
+function endGame() {
+    pauseGame();
+    startBtn.textContent = 'Start';
+    setActiveTile(-1);
+    difficultySelect.disabled = false;
+
+    const bestScore = Number(bestEl.textContent) || 0;
+    if (score > bestScore) {
+        bestEl.textContent = score;
+        localStorage.setItem(bestScoreKey, String(score));
+    }
+}
+
+function resetGame() {
+    pauseGame();
+    score = 0;
+    timeLeft = GAME_TIME;
+    startBtn.textContent = 'Start';
+    difficultySelect.disabled = false;
+    setActiveTile(-1);
+    updateStats();
+}
+
+function handleTileClick(event) {
+    const tile = event.target.closest('.tile');
+    if (!tile || !running) return;
+
+    const index = Number(tile.dataset.index);
+    if (index === activeIndex) {
+        score += 1;
+        tile.classList.add('hit');
+        setTimeout(() => tile.classList.remove('hit'), 180);
+        pickNextTile();
+    } else {
+        score = Math.max(0, score - 1);
+        tile.classList.add('miss');
+        setTimeout(() => tile.classList.remove('miss'), 180);
+    }
 
     updateStats();
 }
 
-// Toggle todo completion
-function toggleTodo(id) {
-    const todo = todos.find(t => t.id === id);
-    if (todo) {
-        todo.completed = !todo.completed;
-        saveTodos();
-        renderTodos();
+startBtn.addEventListener('click', () => {
+    if (running) {
+        pauseGame();
+    } else {
+        startGame();
     }
-}
+});
 
-// Delete a todo
-function deleteTodo(id) {
-    todos = todos.filter(t => t.id !== id);
-    saveTodos();
-    renderTodos();
-}
+resetBtn.addEventListener('click', resetGame);
 
-// Clear all completed todos
-function clearCompleted() {
-    todos = todos.filter(t => !t.completed);
-    saveTodos();
-    renderTodos();
-}
+grid.addEventListener('click', handleTileClick);
 
-// Update statistics
-function updateStats() {
-    totalCount.textContent = todos.length;
-    completedCount.textContent = todos.filter(t => t.completed).length;
-}
+difficultySelect.addEventListener('change', () => {
+    if (running) {
+        pauseGame();
+        startGame();
+    }
+});
 
-// Save todos to localStorage
-function saveTodos() {
-    localStorage.setItem('todos', JSON.stringify(todos));
-}
-
-// Escape HTML to prevent XSS
-function escapeHtml(unsafe) {
-    return unsafe
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
+initGrid();
+loadBestScore();
+updateStats();
