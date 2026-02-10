@@ -3,58 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pulse Grid</title>
+    <title>Orbit Foundry 3D Lab</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="stage">
-        <div class="glow"></div>
-        <main class="game-card">
-            <header class="game-header">
-                <div>
-                    <p class="eyebrow">Arcade Reflex Game</p>
-                    <h1>Pulse Grid</h1>
-                    <p class="subtitle">Hit the glowing tile before it jumps. Stay sharp.</p>
-                </div>
-                <div class="badge">v2026</div>
-            </header>
+    <div class="scene">
+        <header class="topbar">
+            <div class="brand">
+                <span class="tag">3D LAB</span>
+                <h1>Orbit Foundry</h1>
+                <p>Realtime 3D playground. Drag to rotate, scroll to zoom.</p>
+            </div>
+            <div class="status">
+                <div class="chip">Mode <span id="modeLabel">Solid</span></div>
+                <div class="chip">FPS <span id="fps">60</span></div>
+            </div>
+        </header>
 
-            <section class="controls">
+        <main class="content">
+            <section class="panel">
+                <h2>Controls</h2>
+
                 <div class="control">
-                    <label for="difficulty">Difficulty</label>
-                    <select id="difficulty">
-                        <option value="chill">Chill</option>
-                        <option value="steady" selected>Steady</option>
-                        <option value="fast">Fast</option>
+                    <label for="shape">Shape</label>
+                    <select id="shape">
+                        <option value="cube">Cube</option>
+                        <option value="pyramid">Pyramid</option>
+                        <option value="octa">Octahedron</option>
+                        <option value="sphere">Sphere</option>
+                        <option value="torus">Torus</option>
                     </select>
                 </div>
-                <div class="control buttons">
-                    <button id="startBtn" class="primary">Start</button>
-                    <button id="resetBtn" class="ghost">Reset</button>
+
+                <div class="control">
+                    <span class="label">Render Mode</span>
+                    <div class="segmented">
+                        <button class="seg active" type="button" data-mode="solid">Solid</button>
+                        <button class="seg" type="button" data-mode="wire">Wire</button>
+                        <button class="seg" type="button" data-mode="points">Points</button>
+                    </div>
+                </div>
+
+                <div class="control">
+                    <label for="speed">Spin Speed</label>
+                    <input id="speed" type="range" min="0" max="100" value="55">
+                </div>
+
+                <div class="control">
+                    <label for="size">Scale</label>
+                    <input id="size" type="range" min="80" max="220" value="150">
+                </div>
+
+                <div class="control toggle">
+                    <label for="glow">Glow Trails</label>
+                    <input id="glow" type="checkbox" checked>
+                </div>
+
+                <div class="buttons">
+                    <button id="resetBtn" class="ghost" type="button">Reset View</button>
+                    <button id="randomizeBtn" class="primary" type="button">Randomize</button>
                 </div>
             </section>
 
-            <section class="stats">
-                <div>
-                    <span class="label">Score</span>
-                    <span id="score" class="value">0</span>
-                </div>
-                <div>
-                    <span class="label">Time</span>
-                    <span id="timeLeft" class="value">30</span>
-                </div>
-                <div>
-                    <span class="label">Best</span>
-                    <span id="bestScore" class="value">0</span>
-                </div>
-            </section>
-
-            <section class="grid" id="grid" aria-live="polite"></section>
-
-            <section class="tips">
-                <p><strong>How to play:</strong> Click the active tile to score. Misses cost one point. Game ends at 0 seconds.</p>
+            <section class="canvas-wrap glow-on">
+                <canvas id="view" aria-label="3D canvas"></canvas>
+                <div class="hint">Click a mode to change rendering. Auto spin is always on.</div>
             </section>
         </main>
+
+        <footer class="footer">Built with HTML, CSS, and JavaScript. No libraries.</footer>
     </div>
 
     <script src="script.js"></script>
