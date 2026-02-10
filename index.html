@@ -1,38 +1,60 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Todo App</title>
+    <title>Pulse Grid</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>📝 My Todo App -2026</h1>
-            <p>Manage your tasks efficiently</p>
-        </header>
+    <div class="stage">
+        <div class="glow"></div>
+        <main class="game-card">
+            <header class="game-header">
+                <div>
+                    <p class="eyebrow">Arcade Reflex Game</p>
+                    <h1>Pulse Grid</h1>
+                    <p class="subtitle">Hit the glowing tile before it jumps. Stay sharp.</p>
+                </div>
+                <div class="badge">v2026</div>
+            </header>
 
-        <div class="input-section">
-            <input 
-                type="text" 
-                id="todoInput" 
-                placeholder="Add a new task..."
-                autocomplete="off"
-            >
-            <button id="addBtn">Add Task</button>
-        </div>
+            <section class="controls">
+                <div class="control">
+                    <label for="difficulty">Difficulty</label>
+                    <select id="difficulty">
+                        <option value="chill">Chill</option>
+                        <option value="steady" selected>Steady</option>
+                        <option value="fast">Fast</option>
+                    </select>
+                </div>
+                <div class="control buttons">
+                    <button id="startBtn" class="primary">Start</button>
+                    <button id="resetBtn" class="ghost">Reset</button>
+                </div>
+            </section>
 
-        <div class="stats">
-            <span>Total: <strong id="totalCount">0</strong></span>
-            <span>Completed: <strong id="completedCount">0</strong></span>
-        </div>
+            <section class="stats">
+                <div>
+                    <span class="label">Score</span>
+                    <span id="score" class="value">0</span>
+                </div>
+                <div>
+                    <span class="label">Time</span>
+                    <span id="timeLeft" class="value">30</span>
+                </div>
+                <div>
+                    <span class="label">Best</span>
+                    <span id="bestScore" class="value">0</span>
+                </div>
+            </section>
 
-        <ul id="todoList" class="todo-list"></ul>
+            <section class="grid" id="grid" aria-live="polite"></section>
 
-        <div class="footer">
-            <button id="clearBtn">Clear Completed</button>
-        </div>
+            <section class="tips">
+                <p><strong>How to play:</strong> Click the active tile to score. Misses cost one point. Game ends at 0 seconds.</p>
+            </section>
+        </main>
     </div>
 
     <script src="script.js"></script>
