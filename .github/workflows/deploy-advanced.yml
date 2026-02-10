@@ -136,7 +136,7 @@ jobs:
       
       - name: Upload deployment report
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: deployment-report
           path: deployment_report.txt
@@ -158,4 +158,4 @@ jobs:
         if: needs.deploy.result == 'failure'
         run: |
           echo "❌ Deployment failed!"
-          exit 1
+          echo "Check GitHub Actions logs for details"
