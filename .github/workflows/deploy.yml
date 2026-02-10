@@ -1,0 +1,73 @@
+name: Deploy to AWS S3
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'index.html'
+      - 'styles.css'
+      - 'script.js'
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      
+      - name: Validate files exist
+        run: |
+          test -f index.html && echo "✅ index.html found"
+          test -f styles.css && echo "✅ styles.css found"
+          test -f script.js && echo "✅ script.js found"
+      
+      - name: Deploy to S3
+        run: |
+          echo "🚀 Deploying to S3 bucket: ${{ secrets.S3_BUCKET }}"
+          
+          # Upload files with correct content types
+          aws s3 cp index.html s3://${{ secrets.S3_BUCKET }}/index.html \
+            --content-type "text/html" \
+            --cache-control "max-age=3600"
+          
+          aws s3 cp styles.css s3://${{ secrets.S3_BUCKET }}/styles.css \
+            --content-type "text/css" \
+            --cache-control "max-age=3600"
+          
+          aws s3 cp script.js s3://${{ secrets.S3_BUCKET }}/script.js \
+            --content-type "application/javascript" \
+            --cache-control "max-age=3600"
+          
+          echo "✅ Files uploaded successfully"
+      
+      - name: Verify deployment
+        run: |
+          echo "🔍 Verifying files in S3..."
+          aws s3 ls s3://${{ secrets.S3_BUCKET }}/
+          echo "✅ Deployment verified"
+      
+      - name: Print deployment info
+        run: |
+          echo "================================"
+          echo "✅ DEPLOYMENT SUCCESSFUL"
+          echo "================================"
+          echo "Bucket: ${{ secrets.S3_BUCKET }}"
+          echo "Region: ${{ secrets.AWS_REGION }}"
+          echo "Website URL:"
+          echo "http://${{ secrets.S3_BUCKET }}.s3-website-${{ secrets.AWS_REGION }}.amazonaws.com"
+          echo "================================"

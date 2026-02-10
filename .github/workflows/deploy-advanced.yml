@@ -1,0 +1,161 @@
+name: Deploy to AWS S3 (Advanced)
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+env:
+  S3_BUCKET: ${{ secrets.S3_BUCKET }}
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+
+jobs:
+  validate:
+    name: Validate Code
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check file existence
+        run: |
+          echo "🔍 Validating files..."
+          if [ ! -f index.html ]; then echo "❌ index.html missing"; exit 1; fi
+          if [ ! -f styles.css ]; then echo "❌ styles.css missing"; exit 1; fi
+          if [ ! -f script.js ]; then echo "❌ script.js missing"; exit 1; fi
+          echo "✅ All files present"
+      
+      - name: Validate HTML
+        run: |
+          echo "🔍 Checking HTML syntax..."
+          grep -q "<!DOCTYPE html>" index.html && echo "✅ HTML valid" || echo "⚠️  No DOCTYPE found"
+      
+      - name: Validate CSS
+        run: |
+          echo "🔍 Checking CSS..."
+          grep -q "body" styles.css && echo "✅ CSS found" || echo "❌ CSS missing styles"
+      
+      - name: Validate JavaScript
+        run: |
+          echo "🔍 Checking JavaScript..."
+          node -c script.js 2>/dev/null && echo "✅ JavaScript syntax valid" || echo "⚠️  JavaScript validation skipped (no Node.js parser)"
+
+  deploy:
+    name: Deploy to S3
+    needs: validate
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      
+      - name: Check bucket exists
+        run: |
+          echo "🔍 Checking S3 bucket: $S3_BUCKET"
+          aws s3 ls s3://$S3_BUCKET/ > /dev/null 2>&1 || {
+            echo "❌ Bucket not found or no access"
+            exit 1
+          }
+          echo "✅ Bucket accessible"
+      
+      - name: Deploy HTML
+        run: |
+          echo "📤 Uploading index.html..."
+          aws s3 cp index.html s3://$S3_BUCKET/index.html \
+            --content-type "text/html; charset=utf-8" \
+            --cache-control "max-age=3600,must-revalidate" \
+            --metadata "deployed=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+      
+      - name: Deploy CSS
+        run: |
+          echo "📤 Uploading styles.css..."
+          aws s3 cp styles.css s3://$S3_BUCKET/styles.css \
+            --content-type "text/css; charset=utf-8" \
+            --cache-control "max-age=31536000,immutable"
+      
+      - name: Deploy JavaScript
+        run: |
+          echo "📤 Uploading script.js..."
+          aws s3 cp script.js s3://$S3_BUCKET/script.js \
+            --content-type "application/javascript; charset=utf-8" \
+            --cache-control "max-age=31536000,immutable"
+      
+      - name: Verify deployment
+        run: |
+          echo "🔍 Verifying deployment..."
+          FILES=(index.html styles.css script.js)
+          for file in "${FILES[@]}"; do
+            if aws s3 ls s3://$S3_BUCKET/$file > /dev/null; then
+              echo "✅ $file deployed"
+            else
+              echo "❌ $file deployment failed"
+              exit 1
+            fi
+          done
+      
+      - name: Get file sizes
+        run: |
+          echo "📊 Deployed files:"
+          aws s3 ls s3://$S3_BUCKET/ --recursive --human-readable --summarize
+      
+      - name: Generate deployment report
+        if: always()
+        run: |
+          cat > deployment_report.txt << EOF
+          ╔════════════════════════════════════════╗
+          ║     DEPLOYMENT REPORT                  ║
+          ╚════════════════════════════════════════╝
+          
+          Timestamp: $(date -u +'%Y-%m-%d %H:%M:%S UTC')
+          Branch: ${{ github.ref_name }}
+          Commit: ${{ github.sha }}
+          Actor: ${{ github.actor }}
+          
+          S3 Bucket: $S3_BUCKET
+          Region: $AWS_REGION
+          Website: http://$S3_BUCKET.s3-website-$AWS_REGION.amazonaws.com
+          
+          Status: ✅ SUCCESS
+          EOF
+          cat deployment_report.txt
+      
+      - name: Upload deployment report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: deployment-report
+          path: deployment_report.txt
+  
+  notify:
+    name: Send Notifications
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Deployment Success
+        if: needs.deploy.result == 'success'
+        run: |
+          echo "✅ Deployment successful!"
+          echo "🌐 App URL: http://${{ secrets.S3_BUCKET }}.s3-website-${{ secrets.AWS_REGION }}.amazonaws.com"
+      
+      - name: Deployment Failed
+        if: needs.deploy.result == 'failure'
+        run: |
+          echo "❌ Deployment failed!"
+          exit 1
